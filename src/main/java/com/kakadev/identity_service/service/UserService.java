@@ -3,6 +3,8 @@ package com.kakadev.identity_service.service;
 import com.kakadev.identity_service.dto.request.UserCreationRequest;
 import com.kakadev.identity_service.dto.request.UserUpdateRequest;
 import com.kakadev.identity_service.entity.User;
+import com.kakadev.identity_service.exception.AppException;
+import com.kakadev.identity_service.exception.ErrorCode;
 import com.kakadev.identity_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,7 +20,7 @@ public class UserService {
         User user = new User();
 
         if (userRepository.existsUserByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists: " + request.getUsername());
+            throw new AppException(ErrorCode.USER_EXISTS);
         }
 
         user.setUsername(request.getUsername());
@@ -52,6 +54,6 @@ public class UserService {
 
     public User getUserById(String userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 }
