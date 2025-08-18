@@ -1,6 +1,6 @@
 package com.kakadev.identity_service.exception;
 
-import com.kakadev.identity_service.dto.request.ApiResponse;
+import com.kakadev.identity_service.dto.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;

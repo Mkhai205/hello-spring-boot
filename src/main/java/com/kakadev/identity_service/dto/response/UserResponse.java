@@ -1,6 +1,5 @@
-package com.kakadev.identity_service.dto.request;
+package com.kakadev.identity_service.dto.response;
 
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,11 +13,9 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE)
-public class UserCreationRequest {
-    @Size(min = 3, max = 50, message = "USERNAME_INVALID")
+public class UserResponse {
+    String id;
     String username;
-
-    @Size(min = 8, max = 20, message = "PASSWORD_INVALID")
     String password;
     String firstName;
     String lastName;
