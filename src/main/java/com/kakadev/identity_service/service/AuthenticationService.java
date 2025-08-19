@@ -4,6 +4,7 @@ import com.kakadev.identity_service.dto.request.AuthenticationRequest;
 import com.kakadev.identity_service.dto.request.IntrospectRequest;
 import com.kakadev.identity_service.dto.response.AuthenticationResponse;
 import com.kakadev.identity_service.dto.response.IntrospectResponse;
+import com.kakadev.identity_service.entity.User;
 import com.kakadev.identity_service.exception.AppException;
 import com.kakadev.identity_service.exception.ErrorCode;
 import com.kakadev.identity_service.repository.UserRepository;
@@ -25,6 +26,7 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.StringJoiner;
 
 @Slf4j
 @Service
@@ -37,15 +39,24 @@ public class AuthenticationService {
     @Value("${jwt.signerKey}")
     protected String SECRET_KEY;
 
-    private String generateToken(String username) {
+    private String buildScope(User user) {
+        StringJoiner stringJoiner = new StringJoiner(" ");
+        if (!user.getRoles().isEmpty()) {
+            user.getRoles().forEach(stringJoiner::add);
+        }
+
+        return stringJoiner.toString();
+    }
+
+    private String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         JWTClaimsSet jwsClaimsSet = new JWTClaimsSet.Builder()
-                .subject(username)
+                .subject(user.getUsername())
                 .issuer("kakadev.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli())) // 1 hour
-                .claim("customClaim", "customValue")
+                .claim("scope", buildScope(user))
                 .build();
 
         Payload payload = new Payload(jwsClaimsSet.toJSONObject());
@@ -72,7 +83,7 @@ public class AuthenticationService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        var token = generateToken(user.getUsername());
+        var token = generateToken(user);
 
         return AuthenticationResponse.builder()
                 .token(token)

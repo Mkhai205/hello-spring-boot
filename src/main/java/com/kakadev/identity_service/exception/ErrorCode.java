@@ -1,5 +1,10 @@
 package com.kakadev.identity_service.exception;
 
+import lombok.Getter;
+import lombok.experimental.FieldDefaults;
+
+@Getter
+@FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 public enum ErrorCode {
     USER_EXISTS(1001, "Username already exists"),
     USER_NOT_FOUND(1002, "User not found"),
@@ -9,19 +14,11 @@ public enum ErrorCode {
     INVALID_KEY(8888, "Invalid key provided"),
     UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error"),
     ;
-    private int code;
-    private String message;
+    int code;
+    String message;
 
     ErrorCode(int code, String message) {
         this.code = code;
         this.message = message;
-    }
-
-    public int getCode() {
-        return code;
-    }
-
-    public String getMessage() {
-        return message;
     }
 }

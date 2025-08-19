@@ -5,7 +5,6 @@ import com.kakadev.identity_service.dto.request.IntrospectRequest;
 import com.kakadev.identity_service.dto.response.ApiResponse;
 import com.kakadev.identity_service.dto.response.AuthenticationResponse;
 import com.kakadev.identity_service.dto.response.IntrospectResponse;
-import com.kakadev.identity_service.exception.AppException;
 import com.kakadev.identity_service.service.AuthenticationService;
 import com.nimbusds.jose.JOSEException;
 import lombok.RequiredArgsConstructor;
@@ -26,17 +25,15 @@ public class AuthenticationController {
 
     @PostMapping("/login")
     ApiResponse<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
-        var result = authenticationService.authenticate(request);
         return ApiResponse.<AuthenticationResponse>builder()
-                .result(result)
+                .result(authenticationService.authenticate(request))
                 .build();
     }
 
     @PostMapping("/introspect")
     ApiResponse<IntrospectResponse> introspect(@RequestBody IntrospectRequest request) throws ParseException, JOSEException {
-        var result = authenticationService.introspect(request);
         return ApiResponse.<IntrospectResponse>builder()
-                .result(result)
+                .result(authenticationService.introspect(request))
                 .build();
     }
 }

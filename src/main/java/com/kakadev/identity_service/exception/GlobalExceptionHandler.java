@@ -1,11 +1,15 @@
 package com.kakadev.identity_service.exception;
 
 import com.kakadev.identity_service.dto.response.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.util.Objects;
+
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(value = Exception.class)
@@ -15,6 +19,8 @@ public class GlobalExceptionHandler {
 
         apiResponse.setCode(errorCode.getCode());
         apiResponse.setMessage(errorCode.getMessage());
+
+        log.error("An uncategorized exception occurred: {}", exception.getMessage(), exception);
 
         return ResponseEntity.badRequest().body(apiResponse);
     }
@@ -32,7 +38,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse> handleValidationException(MethodArgumentNotValidException exception) {
-        String enumKey = exception.getFieldError().getDefaultMessage();
+        String enumKey = Objects.requireNonNull(exception.getFieldError()).getDefaultMessage();
         ErrorCode errorCode;
 
         try {
