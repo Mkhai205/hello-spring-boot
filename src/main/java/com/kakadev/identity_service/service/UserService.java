@@ -11,12 +11,17 @@ import com.kakadev.identity_service.mapper.UserMapper;
 import com.kakadev.identity_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
@@ -48,18 +53,35 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
+    public UserResponse getMyInfo() {
+        var context = SecurityContextHolder.getContext();
+        String name = context.getAuthentication().getName();
+
+        User user = userRepository.findUserByUsername(name)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return userMapper.toUserResponse(user);
+    }
+
     public void deleteUser(String userId) {
         userRepository.deleteById(userId);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> getAllUsers() {
+        log.info("Inside getAllUsers method");
+
         return userRepository.findAll()
                 .stream()
                 .map(userMapper::toUserResponse)
                 .toList();
     }
 
+//    @PostAuthorize("returnObject.id == #userId or hasRole('ADMIN')")
+    @PostAuthorize("returnObject.username == authentication.name or hasRole('ADMIN')")
     public UserResponse getUserById(String userId) {
+        log.info("Inside getUserById method");
+
         return userMapper.toUserResponse(userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
     }
