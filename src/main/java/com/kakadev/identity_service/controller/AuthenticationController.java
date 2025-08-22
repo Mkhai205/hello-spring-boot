@@ -2,6 +2,7 @@ package com.kakadev.identity_service.controller;
 
 import com.kakadev.identity_service.dto.request.AuthenticationRequest;
 import com.kakadev.identity_service.dto.request.IntrospectRequest;
+import com.kakadev.identity_service.dto.request.LogoutRequest;
 import com.kakadev.identity_service.dto.response.ApiResponse;
 import com.kakadev.identity_service.dto.response.AuthenticationResponse;
 import com.kakadev.identity_service.dto.response.IntrospectResponse;
@@ -27,6 +28,14 @@ public class AuthenticationController {
     ApiResponse<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
         return ApiResponse.<AuthenticationResponse>builder()
                 .result(authenticationService.authenticate(request))
+                .build();
+    }
+
+    @PostMapping("/logout")
+    ApiResponse<Void> logout(@RequestBody LogoutRequest request) throws ParseException, JOSEException {
+        authenticationService.logout(request);
+
+        return ApiResponse.<Void>builder()
                 .build();
     }
 

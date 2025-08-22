@@ -2,11 +2,14 @@ package com.kakadev.identity_service.service;
 
 import com.kakadev.identity_service.dto.request.AuthenticationRequest;
 import com.kakadev.identity_service.dto.request.IntrospectRequest;
+import com.kakadev.identity_service.dto.request.LogoutRequest;
 import com.kakadev.identity_service.dto.response.AuthenticationResponse;
 import com.kakadev.identity_service.dto.response.IntrospectResponse;
+import com.kakadev.identity_service.entity.InvalidatedToken;
 import com.kakadev.identity_service.entity.User;
 import com.kakadev.identity_service.exception.AppException;
 import com.kakadev.identity_service.exception.ErrorCode;
+import com.kakadev.identity_service.repository.InvalidatedTokenRepository;
 import com.kakadev.identity_service.repository.UserRepository;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -27,6 +30,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.StringJoiner;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -34,6 +38,7 @@ import java.util.StringJoiner;
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationService {
     UserRepository userRepository;
+    InvalidatedTokenRepository invalidatedTokenRepository;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -42,7 +47,12 @@ public class AuthenticationService {
     private String buildScope(User user) {
         StringJoiner stringJoiner = new StringJoiner(" ");
         if (!user.getRoles().isEmpty()) {
-            user.getRoles().forEach(stringJoiner::add);
+            user.getRoles().forEach(role -> {
+                stringJoiner.add("ROLE_" + role.getName());
+                if (role.getPermissions() != null && !role.getPermissions().isEmpty()) {
+                    role.getPermissions().forEach(permission -> stringJoiner.add(permission.getName()));
+                }
+            });
         }
 
         return stringJoiner.toString();
@@ -56,6 +66,7 @@ public class AuthenticationService {
                 .issuer("kakadev.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli())) // 1 hour
+                .jwtID(UUID.randomUUID().toString())
                 .claim("scope", buildScope(user))
                 .build();
 
@@ -70,6 +81,26 @@ public class AuthenticationService {
             log.error("Error generating token", e);
             throw new RuntimeException(e);
         }
+    }
+
+    private SignedJWT verifyToken(String token) throws JOSEException, ParseException {
+        JWSVerifier verifier = new MACVerifier(SECRET_KEY.getBytes());
+
+        SignedJWT signedJWT = SignedJWT.parse(token);
+
+        boolean expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime().after(new Date());
+
+        var verified = signedJWT.verify(verifier);
+
+        if (!verified && expirationTime) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        if (invalidatedTokenRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID())) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        return signedJWT;
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
@@ -91,19 +122,32 @@ public class AuthenticationService {
                 .build();
     }
 
+    public void logout(LogoutRequest request) throws ParseException, JOSEException {
+        var signToken = verifyToken(request.getToken());
+
+        String jit = signToken.getJWTClaimsSet().getJWTID();
+        Date expirationTime = signToken.getJWTClaimsSet().getExpirationTime();
+
+        InvalidatedToken invalidatedToken = InvalidatedToken.builder()
+                .id(jit)
+                .expirationTime(expirationTime)
+                .build();
+
+        invalidatedTokenRepository.save(invalidatedToken);
+    }
+
     public IntrospectResponse introspect(IntrospectRequest request) throws JOSEException, ParseException {
         var token = request.getToken();
+        boolean isValid = true;
 
-        JWSVerifier verifier = new MACVerifier(SECRET_KEY.getBytes());
-
-        SignedJWT signedJWT = SignedJWT.parse(token);
-
-        boolean expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime().after(new Date());
-
-        var verified = signedJWT.verify(verifier);
+        try {
+            verifyToken(token);
+        } catch (AppException e) {
+            isValid = false;
+        }
 
         return IntrospectResponse.builder()
-                .valid(verified && expirationTime)
+                .valid(isValid)
                 .build();
     }
 }
